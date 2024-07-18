@@ -1,0 +1,14 @@
+# Ignore Python compiled files
+*.pyc
+__pycache__/
+
+# Ignore environment files
+.env
+venv/
+.env/
+embed/
+
+# Ignore other sensitive or temporary files
+*.log
+*.sqlite3
+.DS_Store
