@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
+from bson import ObjectId
+from datetime import datetime
 from langchain.chains import ConversationalRetrievalChain, LLMChain
 from langchain.chains.conversational_retrieval.prompts import CONDENSE_QUESTION_PROMPT, QA_PROMPT
 from langchain.chains.question_answering import load_qa_chain
@@ -35,7 +37,11 @@ def load_existing_metadata(dest_embed_dir):
     metadata_file = os.path.join(dest_embed_dir, "metadata.json")
     if os.path.exists(metadata_file):
         with open(metadata_file, 'r') as file:
-            return json.load(file)
+            try:
+                return json.load(file)
+            except json.JSONDecodeError:
+                # Handle empty or corrupted JSON file
+                return []
     return []
 
 def save_metadata(dest_embed_dir, metadata):
@@ -52,19 +58,28 @@ def load_patient_data(user_id):
     Returns:
         A list of document contents as strings with metadata.
     """
-    user_records = collection.find({"userId": user_id}).sort("uploadedDate", 1)  # Sort by uploadedDate timestamp
+    user_records = collection.find({"userId": ObjectId(user_id)}).sort("uploadedDate", 1)  # Sort by uploadedDate timestamp
     documents = []
 
     for record in user_records:
         if 'transcripts' in record:
+            content = record['transcripts']
+            summary = record.get('summary', '')
+            uploaded_date = record['uploadedDate'].strftime("%d-%m-%Y %H:%M:%S")
+
+            content += f"\nSummary: {summary}\nDate and Time: {uploaded_date}"
+
             documents.append({
-                "content": record['transcripts'],
+                "content": content,
                 "metadata": {
-                    "userId": user_id,
-                    "uploadedDate": record.get('uploadedDate')  # Add uploadedDate to metadata
+                    "userId": str(record['userId']),  # Convert ObjectId to string
+                    "uploadedDate": uploaded_date,    # Format datetime to "dd-mm-yyyy HH:MM:SS"
+                    "summary": summary,
+                    "transcripts": record['transcripts']
                 }
             })
     return documents
+
 
 def index_docs(documents, user_id):
     dest_embed_dir = f"./embed/{user_id}"
@@ -126,7 +141,6 @@ def train():
     # Process and index the user data
     index_docs(user_data, user_id)
     return jsonify({"message": "Training completed successfully"}), 200
-
 
 @app.route('/ask', methods=['POST'])
 def ask():
