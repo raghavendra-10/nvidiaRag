@@ -29,7 +29,7 @@ collection = db["audios"]
 
 embedding_model = NVIDIAEmbeddings(model="NV-Embed-QA")
 llm = ChatNVIDIA(model="meta/llama2-70b")
-chat = ChatNVIDIA(model="mistralai/mixtral-8x7b-instruct-v0.1", temperature=0.1, max_tokens=1000, top_p=1.0)
+chat = ChatNVIDIA(model="mistralai/mixtral-8x7b-instruct-v0.1", temperature=0.5, max_tokens=1000, top_p=1.0)
 
 def load_existing_metadata(dest_embed_dir):
     metadata_file = os.path.join(dest_embed_dir, "metadata.json")
